@@ -1,56 +1,33 @@
-// gemini-solver.js - Nhập đề trực tiếp, không đọc web
+// gemini-solver.js - Phiên bản gọn nhẹ
 const _0x3a4b = "gVH30eaBb4DV1utfJ94m0GVymawfG5QlCySazIA";
 const KEY = _0x3a4b.split('').reverse().join('');
 const MODEL = "gemini-2.5-flash-lite";
 
 window.solve = () => {
-    console.log('📝 Dán đề bài vào và nhấn Enter:');
     const textarea = document.createElement('textarea');
     textarea.placeholder = 'Dán đề bài vào đây...';
-    textarea.style.position = 'fixed';
-    textarea.style.top = '50%';
-    textarea.style.left = '50%';
-    textarea.style.transform = 'translate(-50%, -50%)';
-    textarea.style.width = '80%';
-    textarea.style.height = '60%';
-    textarea.style.zIndex = '9999';
-    textarea.style.padding = '10px';
-    textarea.style.fontSize = '14px';
-    textarea.style.fontFamily = 'monospace';
+    textarea.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:80%;height:60%;z-index:9999;padding:10px;font:14px monospace';
     
     const btn = document.createElement('button');
-    btn.textContent = 'Gửi đề';
-    btn.style.position = 'fixed';
-    btn.style.bottom = '20%';
-    btn.style.left = '50%';
-    btn.style.transform = 'translateX(-50%)';
-    btn.style.zIndex = '9999';
-    btn.style.padding = '10px 20px';
-    btn.style.fontSize = '16px';
-    btn.style.cursor = 'pointer';
+    btn.textContent = 'Giải';
+    btn.style.cssText = 'position:fixed;bottom:20%;left:50%;transform:translateX(-50%);z-index:9999;padding:10px 20px;cursor:pointer';
     
-    document.body.appendChild(textarea);
-    document.body.appendChild(btn);
+    document.body.append(textarea, btn);
     
     btn.onclick = async () => {
-        const problem = textarea.value;
-        if (!problem.trim()) {
-            alert('Vui lòng nhập đề bài!');
-            return;
-        }
-        
+        const problem = textarea.value.trim();
+        if (!problem) return alert('Nhập đề!');
         document.body.removeChild(textarea);
         document.body.removeChild(btn);
         
         console.log('🤖 Đang giải...');
         
-        const prompt = `Viết code Python giải bài toán sau. Yêu cầu:
-1. Sử dụng import sys; input = sys.stdin.readline để đọc dữ liệu
-2. Code phải tối ưu cho ràng buộc lớn (N,K ≤ 10^9)
-3. Chỉ trả về code Python thuần, không giải thích
+        const prompt = `Giải bài toán sau bằng Python. Yêu cầu:
+- Dùng: import sys; input = sys.stdin.readline
+- Code tối ưu, ngắn gọn
+- Chỉ trả code, không giải thích
 
-ĐỀ BÀI:
-${problem}`;
+Đề: ${problem}`;
 
         try {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${KEY}`, {
@@ -58,7 +35,7 @@ ${problem}`;
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     contents: [{parts: [{text: prompt}]}],
-                    generationConfig: { temperature: 0.3, maxOutputTokens: 2000 }
+                    generationConfig: {temperature: 0.2, maxOutputTokens: 1000}
                 })
             });
             
@@ -66,63 +43,47 @@ ${problem}`;
             let code = data.candidates[0].content.parts[0].text;
             code = code.replace(/```python\n?/g, '').replace(/```/g, '').trim();
             
-            console.log('\n' + '='.repeat(70));
-            console.log('💻 CODE GIẢI:');
-            console.log('='.repeat(70));
+            console.log('\n' + '='.repeat(50));
             console.log(code);
-            console.log('='.repeat(70));
+            console.log('='.repeat(50));
             
-            await navigator.clipboard.writeText(code);
-            console.log('✅ Đã copy code vào clipboard!');
+            // Fix lỗi copy
+            const copyCode = async () => {
+                try {
+                    await navigator.clipboard.writeText(code);
+                    console.log('✅ Đã copy!');
+                } catch(e) {
+                    console.log('Copy thủ công: Ctrl+C');
+                }
+            };
+            copyCode();
             
-        } catch (error) {
-            console.error('❌ Lỗi:', error.message);
+        } catch(err) {
+            console.error('❌ Lỗi:', err.message);
         }
     };
 };
 
-window.solveQuick = (problem) => {
-    if (!problem) {
-        console.log('❌ Cách dùng: solveQuick(`đề bài của bạn`)');
-        return;
-    }
-    
-    console.log('🤖 Đang giải...');
-    
-    const prompt = `Viết code Python giải bài toán sau. Yêu cầu:
-1. Sử dụng import sys; input = sys.stdin.readline
-2. Code tối ưu cho ràng buộc lớn (N,K ≤ 10^9)
-3. Chỉ trả về code thuần, không giải thích
-
-ĐỀ BÀI:
-${problem}`;
-
+window.solveQuick = (p) => {
+    if (!p) return console.log('Dùng: solveQuick(`đề`)');
     fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${KEY}`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-            contents: [{parts: [{text: prompt}]}],
-            generationConfig: { temperature: 0.3, maxOutputTokens: 2000 }
+            contents: [{parts: [{text: `Viết code Python giải: ${p}. Dùng sys.stdin.readline. Code ngắn gọn, chỉ code.`}]}],
+            generationConfig: {temperature: 0.2, maxOutputTokens: 800}
         })
     })
-    .then(res => res.json())
-    .then(data => {
-        let code = data.candidates[0].content.parts[0].text;
-        code = code.replace(/```python\n?/g, '').replace(/```/g, '').trim();
-        
-        console.log('\n' + '='.repeat(70));
-        console.log('💻 CODE GIẢI:');
-        console.log('='.repeat(70));
-        console.log(code);
-        console.log('='.repeat(70));
-        
-        navigator.clipboard.writeText(code);
-        console.log('✅ Đã copy code vào clipboard!');
+    .then(r => r.json())
+    .then(d => {
+        let c = d.candidates[0].content.parts[0].text.replace(/```python\n?|```/g, '').trim();
+        console.log('\n' + '='.repeat(50));
+        console.log(c);
+        console.log('='.repeat(50));
+        navigator.clipboard.writeText(c);
+        console.log('✅ Copied!');
     })
-    .catch(error => console.error('❌ Lỗi:', error.message));
+    .catch(e => console.log('❌', e.message));
 };
 
-console.log('✅ Gemini Solver ready!');
-console.log('📌 Cách dùng:');
-console.log('   solve()              - Mở cửa sổ để dán đề');
-console.log('   solveQuick(`đề bài`) - Giải nhanh với đề 1 dòng');
+console.log('✅ Ready! Dùng: solve() hoặc solveQuick(`đề`)');
